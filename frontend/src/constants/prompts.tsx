@@ -21,6 +21,21 @@ Please state if a category is not available in the provided document or if there
 Please give an overview per category for Winter and Summer.
 Please state if the value is higher or lower than the policies.
 Please state if a category is not available in the provided document or if there are categories in the provided document that are not in the policies
+`,
+    certifications: `Does the provided project brief meet the building certifications stated in the policies.
+Please state if the building certifications are met or if they are missing.
+`,
+    occupancy: `Does the provided project brief below meet the occupancy as stated in the Edge company policies?
+Please divide into:
+Office space
+Entrance space
+Bike parking
+Car parking
+Atrium
+Staircase
+Elevator
+Does the occupancy meet the building conducts / laws?
+Please give an overview of all the areas mentioned in the provided brief and whether we have guidelines in our policies.
 `
 }
 
@@ -44,5 +59,15 @@ export const CHECKS: CheckObject[] = [
         icon: "LightningBolt",
         prompt: PROMPTS.thermalInsulation,
         title: "Thermal Comfort"
+    },
+    {
+        icon: "Medal",
+        prompt: PROMPTS.certifications,
+        title: "Certifications"
+    },
+    {
+        icon: "People",
+        prompt: PROMPTS.occupancy,
+        title: "Occupancy"
     }
 ]

@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@opendocsg/pdf2md": "^0.1.31"
+  }
+}

@@ -1,46 +1,63 @@
-import React, { useEffect, useState } from 'react';
-import { Upload, AlertCircle } from 'lucide-react';
-import * as pdfjsLib from 'pdfjs-dist';
+import React, { useEffect } from 'react';
+import DocumentIntelligence from "@azure-rest/ai-document-intelligence";
+import {
+    getLongRunningPoller,
+    AnalyzeResultOperationOutput,
+    isUnexpected,
+  } from "@azure-rest/ai-document-intelligence";
+import { AlertCircle } from 'lucide-react';
+
 
 type PDFUploadProps = {
     disabled: boolean;
+    onFileLoadingChange: (loading: boolean) => void;
     onPdfContentChange: (content: string | null) => void;
     onErrorChange: (error: string | null) => void;
     pdfContent: string | null;
     error: string | null;
 };
 
-type PageContents = {
-    pageNumber: number;
-    textContent: string;
-}
-
 const PDFUploadComponent = ( props: PDFUploadProps) => {
 
+    const key = "8eb0debe07194c6e89ea6ed854d70b86";
+    const endpoint = "https://docint-west-europe.cognitiveservices.azure.com/";
+
+    function _arrayBufferToBase64( buffer: ArrayBuffer ) {
+        var binary = '';
+        var bytes = new Uint8Array( buffer );
+        var len = bytes.byteLength;
+        for (var i = 0; i < len; i++) {
+            binary += String.fromCharCode( bytes[ i ] );
+        }
+        return window.btoa( binary );
+    }
+
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    props.onFileLoadingChange(true);
     const file = event.target.files?.[0];
     if (file && file.type === 'application/pdf') {
+        const client = DocumentIntelligence(endpoint, {key});
+        
       try {
         const arrayBuffer = await file.arrayBuffer();
-        const loadingTask = pdfjsLib.getDocument(arrayBuffer);
-        const pdf = await loadingTask.promise;
-        const numPages = pdf.numPages;
-        const pages: PageContents[] = [];
-        for (let i = 1; i <= numPages; i++) {
-          const page = await pdf.getPage(i);
-          const textContent = await page.getTextContent();
-          pages.push({
-            pageNumber: i,
-            textContent: textContent.items.map(item => {
-              // Check if the item has 'str' property, otherwise use an empty string
-              return 'str' in item ? item.str : '';
-            }).join(' ')
-          })
-        }	
-        const pdfString = pages.map(page => `Page Number: ${page.pageNumber}\n` + page.textContent).join(' ');
-        props.onPdfContentChange(pdfString);
+        const initialResponse = await client.path("/documentModels/{modelId}:analyze", "prebuilt-layout").post({
+            contentType: "application/json",
+            body: {
+                base64Source: _arrayBufferToBase64(arrayBuffer),
+              },
+            queryParameters: { outputContentFormat: "markdown" },
+          });
+
+        if (isUnexpected(initialResponse)) {
+            throw initialResponse.body.error;
+        }
+        const poller = await getLongRunningPoller(client, initialResponse);
+        const result = (await poller.pollUntilDone()).body as AnalyzeResultOperationOutput;
+        props.onPdfContentChange(result.analyzeResult?.content ?? null);
         props.onErrorChange(null);
+        props.onFileLoadingChange(false);
       } catch (err) {
+        console.error(err);
         // @ts-ignore
         props.onErrorChange(err.message);
         props.onPdfContentChange(null);
@@ -50,15 +67,6 @@ const PDFUploadComponent = ( props: PDFUploadProps) => {
       props.onPdfContentChange(null);
     }
   };
-
-  useEffect(() => {
-    const loadWorker = async () => {
-    // @ts-ignore
-      const worker = await import('pdfjs-dist/build/pdf.worker.mjs');
-      pdfjsLib.GlobalWorkerOptions.workerSrc = worker.default;
-    };
-    loadWorker();
-  }, []);
 
   return (
     <div className="max-w-md mx-auto mt-8">
@@ -77,19 +85,12 @@ const PDFUploadComponent = ( props: PDFUploadProps) => {
         />
       </label>
       
-      {/* {props.error && (
+      {props.error && (
         <div className="flex items-center text-red-600 text-sm font-semibold">
           <AlertCircle size={16} className="mr-2" />
           {props.error}
         </div>
       )}
-      
-      {props.pdfContent && (
-        <div className="mt-4">
-          <h3 className="text-lg font-semibold mb-2">PDF Content:</h3>
-          <p className="text-sm text-gray-600">{props.pdfContent}</p>
-        </div>
-      )} */}
     </div>
   );
 };

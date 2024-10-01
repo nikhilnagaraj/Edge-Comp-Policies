@@ -744,14 +744,15 @@ const Chat = () => {
   /*PDF & Comparison Stuff*/
   const [pdfContent, setPdfContent] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [fileLoading, setFileLoading] = useState<boolean>(false);
 
   const onClickComparison = (prompt: string) => {
     const question = prompt + '\n' + pdfContent;
     const id = appStateContext?.state.currentChat?.id;
 
     appStateContext?.state.isCosmosDBAvailable?.cosmosDB
-    ? makeApiRequestWithCosmosDB(question, id)
-    : makeApiRequestWithoutCosmosDB(question, id)
+      ? makeApiRequestWithCosmosDB(question, id)
+      : makeApiRequestWithoutCosmosDB(question, id)
   }
 
   return (
@@ -798,7 +799,20 @@ const Chat = () => {
                   <>
                     {answer.role === 'user' ? (
                       <div className={styles.chatMessageUser} tabIndex={0}>
-                        <div className={styles.chatMessageUserMessage}>{answer.content}</div>
+                        <div className={styles.chatMessageUserMessage}>
+                          <Answer
+                            answer={{
+                              answer: answer.content,
+                              citations: parseCitationFromMessage(messages[index - 1]),
+                              plotly_data: parsePlotFromMessage(messages[index - 1]),
+                              message_id: answer.id,
+                              feedback: answer.feedback,
+                              exec_results: execResults
+                            }}
+                            onCitationClicked={c => onShowCitation(c)}
+                            onExectResultClicked={() => onShowExecResult()}
+                          />
+                        </div>
                       </div>
                     ) : answer.role === 'assistant' ? (
                       <div className={styles.chatMessageGpt}>
@@ -844,42 +858,42 @@ const Chat = () => {
                 <div ref={chatMessageStreamEnd} />
               </div>
             )}
-            <div className="flexbox-container" style={{display: "flex", flexDirection: "row", gap: 10, marginLeft: "170px", alignSelf: "flex-start"}}>
-             <PDFUploadComponent disabled={isLoading} onPdfContentChange={setPdfContent}
-              onErrorChange={setError}
-              pdfContent={pdfContent}
-              error={error} /> 
-            <b>Checks: </b>
+            <div className="flexbox-container" style={{ display: "flex", flexDirection: "row", gap: 10, marginLeft: "170px", alignSelf: "flex-start" }}>
+              <PDFUploadComponent disabled={isLoading} onFileLoadingChange={setFileLoading} onPdfContentChange={setPdfContent}
+                onErrorChange={setError}
+                pdfContent={pdfContent}
+                error={error} />
+              <b>Checks: </b>
               {
-                CHECKS.map( check => (
+                CHECKS.map(check => (
                   <CommandBarButton
-                  role="button"
-                  title={check.title}
-                  styles={{
-                    icon: {
-                      color: '#FFDFFF'
-                    },
-                    iconDisabled: {
-                      color: '#BDBDBD !important'
-                    },
-                    root: {
-                      color: '#FFFFFF',
-                      background:
-                        'radial-gradient(109.81% 107.82% at 100.1% 90.19%, #0F6CBD 33.63%, #2D87C3 70.31%, #8DDDD8 100%)'
-                    },
-                    rootDisabled: {
-                      background: '#F0F0F0'
+                    role="button"
+                    title={check.title}
+                    styles={{
+                      icon: {
+                        color: '#FFDFFF'
+                      },
+                      iconDisabled: {
+                        color: '#BDBDBD !important'
+                      },
+                      root: {
+                        color: '#FFFFFF',
+                        background:
+                          'radial-gradient(109.81% 107.82% at 100.1% 90.19%, #0F6CBD 33.63%, #2D87C3 70.31%, #8DDDD8 100%)'
+                      },
+                      rootDisabled: {
+                        background: '#F0F0F0'
+                      }
+                    }}
+                    iconProps={{ iconName: check.icon }}
+                    onClick={
+                      () => onClickComparison(check.prompt)
                     }
-                  }}
-                  iconProps={{ iconName: check.icon }}
-                  onClick={
-                    () => onClickComparison(check.prompt)
-                  }
-                  disabled={false}
-                  aria-label="comparison button"
+                    disabled={!pdfContent || fileLoading || isLoading}
+                    aria-label="comparison button"
                   />
                 ))
-              } 
+              }
             </div>
             <Stack horizontal className={styles.chatInput}>
               {isLoading && messages.length > 0 && (
