@@ -35,9 +35,11 @@ import {
 } from "../../api";
 import { Answer } from "../../components/Answer";
 import { QuestionInput } from "../../components/QuestionInput";
+import PDFUploadComponent from "../../components/UploadFile";
 import { ChatHistoryPanel } from "../../components/ChatHistory/ChatHistoryPanel";
 import { AppStateContext } from "../../state/AppProvider";
 import { useBoolean } from "@fluentui/react-hooks";
+import { CheckObject, CHECKS, PROMPTS } from '../../constants/prompts'
 
 const enum messageStatus {
   NotRunning = 'Not Running',
@@ -739,6 +741,19 @@ const Chat = () => {
     )
   }
 
+  /*PDF & Comparison Stuff*/
+  const [pdfContent, setPdfContent] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const onClickComparison = (prompt: string) => {
+    const question = prompt + '\n' + pdfContent;
+    const id = appStateContext?.state.currentChat?.id;
+
+    appStateContext?.state.isCosmosDBAvailable?.cosmosDB
+    ? makeApiRequestWithCosmosDB(question, id)
+    : makeApiRequestWithoutCosmosDB(question, id)
+  }
+
   return (
     <div className={styles.container} role="main">
       {showAuthMessage ? (
@@ -829,7 +844,43 @@ const Chat = () => {
                 <div ref={chatMessageStreamEnd} />
               </div>
             )}
-
+            <div className="flexbox-container" style={{display: "flex", flexDirection: "row", gap: 10, marginLeft: "170px", alignSelf: "flex-start"}}>
+             <PDFUploadComponent disabled={isLoading} onPdfContentChange={setPdfContent}
+              onErrorChange={setError}
+              pdfContent={pdfContent}
+              error={error} /> 
+            <b>Checks: </b>
+              {
+                CHECKS.map( check => (
+                  <CommandBarButton
+                  role="button"
+                  title={check.title}
+                  styles={{
+                    icon: {
+                      color: '#FFDFFF'
+                    },
+                    iconDisabled: {
+                      color: '#BDBDBD !important'
+                    },
+                    root: {
+                      color: '#FFFFFF',
+                      background:
+                        'radial-gradient(109.81% 107.82% at 100.1% 90.19%, #0F6CBD 33.63%, #2D87C3 70.31%, #8DDDD8 100%)'
+                    },
+                    rootDisabled: {
+                      background: '#F0F0F0'
+                    }
+                  }}
+                  iconProps={{ iconName: check.icon }}
+                  onClick={
+                    () => onClickComparison(check.prompt)
+                  }
+                  disabled={false}
+                  aria-label="comparison button"
+                  />
+                ))
+              } 
+            </div>
             <Stack horizontal className={styles.chatInput}>
               {isLoading && messages.length > 0 && (
                 <Stack

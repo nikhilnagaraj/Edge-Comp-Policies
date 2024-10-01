@@ -7,7 +7,17 @@ export default defineConfig({
   build: {
     outDir: '../static',
     emptyOutDir: true,
-    sourcemap: true
+    sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'pdf.worker': ['pdfjs-dist/build/pdf.worker.mjs']
+        }
+      }
+    }
+  },
+  optimizeDeps: {
+    include: ['pdfjs-dist/build/pdf.worker.mjs'],
   },
   server: {
     proxy: {
